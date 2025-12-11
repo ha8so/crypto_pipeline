@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: airflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  airflow-init:
+    image: apache/airflow:2.9.0
+    container_name: airflow_init
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: "S0m3Rand0mF3rn3tKey1234567890=="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      _AIRFLOW_DB_UPGRADE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    entrypoint: >
+      bash -c "airflow db upgrade &&
+               airflow users create
+                 --username admin
+                 --firstname Admin
+                 --lastname User
+                 --role Admin
+                 --email admin@example.com
+                 --password admin &&
+               echo 'Airflow initialisé'"
+
+  airflow-webserver:
+    image: apache/airflow:2.9.0
+    container_name: airflow_webserver
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: "S0m3Rand0mF3rn3tKey1234567890=="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      WAREHOUSE_HOST: "host.docker.internal"
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: "tajarib"
+      WAREHOUSE_USER: "postgres"
+      WAREHOUSE_PASSWORD: "123456"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./dbt_crypto/dbt_crypto:/opt/dbt_crypto
+      - ./dbt_profiles/profiles.yml:/home/airflow/.dbt/profiles.yml
+    command: >
+      bash -c "pip install dbt-core dbt-postgres && airflow webserver"
+    ports:
+      - "8080:8080"
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.0
+    container_name: airflow_scheduler
+    depends_on:
+      - postgres
+      - airflow-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__FERNET_KEY: "S0m3Rand0mF3rn3tKey1234567890=="
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      WAREHOUSE_HOST: "host.docker.internal"
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: "tajarib"
+      WAREHOUSE_USER: "postgres"
+      WAREHOUSE_PASSWORD: "123456"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./dbt_crypto/dbt_crypto:/opt/dbt_crypto
+      - ./dbt_profiles/profiles.yml:/home/airflow/.dbt/profiles.yml
+    command: >
+      bash -c "pip install dbt-core dbt-postgres && airflow scheduler"
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"        # interface web Superset
+    environment:
+      SUPERSET_SECRET_KEY: "une_chaine_tres_secrete_123"
+    volumes:
+      - superset_home:/app/superset_home
+
+volumes:
+  pg_data:
+  superset_home:

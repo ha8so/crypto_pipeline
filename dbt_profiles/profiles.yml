@@ -1,0 +1,12 @@
+dbt_crypto:           # <<< doit matcher "profile: dbt_crypto"
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: host.docker.internal
+      user: postgres
+      password: "123456"
+      port: 5432
+      dbname: tajarib
+      schema: analytics
+      threads: 1

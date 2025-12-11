@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# Airflow
+airflow/logs/
+airflow/*__pycache__/
+
+# dbt
+dbt_crypto/target/
+dbt_crypto/logs/
+dbt_crypto/dbt_crypto/logs/
+dbt_crypto/dbt_crypto/target/
+
+# Superset & Docker
+superset_home/
+*.db
+*.pid
